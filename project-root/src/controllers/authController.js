@@ -18,8 +18,8 @@ export const login = async (req, res) => {
             return res.status(401).json({ message: 'Credencial invalida' });
         }
 
-        const token = jwt.sign({ id: user._id }, config.SECRET, { expiresIn: config.EXPIRACION });
-        res.cookie('jwt', token, { httpOnly: true, maxAge: 3600000 }); 
+        let token = jwt.sign({ id: user._id, role: user.role }, config.SECRET, { expiresIn: config.EXPIRACION });
+        res.cookie('jwt', token, { httpOnly: true, maxAge: 3600000, secure: false }); 
         res.json({
             message: 'Login exitoso',
             user: {

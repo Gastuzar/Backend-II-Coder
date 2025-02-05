@@ -1,9 +1,12 @@
 import express from 'express';
-import passport, { iniciarPassport } from './config/passport.js';
-import sessionsRouter from './routes/sessionsRouter.js';
 import cookieParser from 'cookie-parser';
 import { conectarDB } from './ConnDB.js';
 import { config } from './config/config.js';
+import sessionsRouter from './routes/sessionsRouter.js';
+import productsRouter from './routes/productsRoutes.js';
+import cartsRouter from './routes/cartRoutes.js';
+import { iniciarPassport } from './config/passport.js';
+import passport from 'passport';
 
 const PORT = config.PORT;
 const app = express();
@@ -16,8 +19,15 @@ iniciarPassport();
 app.use(passport.initialize());
 
 
-
+app.use("/api/products", productsRouter);
+app.use("/api/carts", cartsRouter);
 app.use('/api/sessions', sessionsRouter);
+
+app.use((err, req, res, next) => {
+    console.error(err);
+    res.status(err.status || 500).json({ error: err.message || 'Error inesperado en el servidor' });
+});
+
 
 app.get('/', (req, res) => {
     res.status(200).send('OK');

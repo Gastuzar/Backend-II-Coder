@@ -1,5 +1,4 @@
 import mongoose from "mongoose"
-console.log("ConnDB.js")
 export const conectarDB=async(url, dbName)=>{
     try {
         console.time("Demora al conectar a DB:")
