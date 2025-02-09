@@ -1,15 +1,29 @@
-
-import Product from '../DAO/models/productsModel.js';
-
-export const getAllProducts = async () => {
-    return await Product.find().lean(); 
-};
-
-export const createNewProduct = async (productData) => {
-    return await Product.create(productData);
-};
+import { productoModelo as Product } from '../DAO/models/productsModel.js';
 
 
-export const getProductByCode = async (code) => {
-    return await Product.findOne({ code }).lean();
-};
+
+export class ProductosDAO{
+    static async getAllProducts(){
+        return await Product.find().lean(); 
+    };
+
+    static async createNewProduct(product){
+        let productData = await Product.create(product);       
+        return productData;
+    };
+
+
+    static async updateProduct(id, product){
+        let updatedProduct = await Product.findByIdAndUpdate(id, product, { new: true });
+        return updatedProduct;
+    };
+
+    static async deleteProduct(id){
+        let deletedProduct = await Product.findByIdAndDelete(id);
+        return deletedProduct;
+    }; 
+    static async getProductById(id){
+        let product = await Product.findById(id);
+        return product;
+    };
+}

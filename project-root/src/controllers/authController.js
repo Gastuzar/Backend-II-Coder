@@ -1,80 +1,88 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import User from '../DAO/models/user.js';
 import { config } from '../config/config.js';
 import { procesaErrores } from '../utils.js';
+import { userDTO } from '../DTO/userDTO.js';
+import { usuariosMongoDAO } from '../DAO/userMongoDAO.js';
+import { CartsDAO as Cart } from '../DAO/cartsDAO.js'; 
 
-export const login = async (req, res) => {
-    const { email, password } = req.body;
+export class AuthController {
+    static async login(req, res) {
+        try { 
+        let user = await usuariosMongoDAO.getUserByEmail(req.body.email);
+            if (!user) {
+                return res.status(401).json({ message: 'Usuario no encontrado' });
+            }
 
-    try {
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(401).json({ message: 'Usuario no encontrado' });
-        }
-
-        const newPass = bcrypt.compareSync(password, user.password);
-        if (!newPass) {
+        const validPassword = bcrypt.compareSync(req.body.password, user.password);
+        if (!validPassword) {
             return res.status(401).json({ message: 'Credencial invalida' });
         }
+        if (!user.cart) {
+            const newCart = await Cart.addCart();
 
-        let token = jwt.sign({ id: user._id, role: user.role }, config.SECRET, { expiresIn: config.EXPIRACION });
-        res.cookie('jwt', token, { httpOnly: true, maxAge: 3600000, secure: false }); 
+            await usuariosMongoDAO.updateUser(user._id, { cart: newCart._id });
+        }
+        let token = jwt.sign(
+            { id: user._id, role: user.role },
+            config.SECRET,
+            { expiresIn: config.EXPIRACION }
+        );
+
+        res.cookie('jwt', token, { httpOnly: true, maxAge: 3600000, secure: false });
         res.json({
             message: 'Login exitoso',
-            user: {
-                first_name: user.first_name,
-                last_name: user.last_name,
-                email: user.email,
-                role: user.role
-            }
+            user: new userDTO(user)
         });
-    } catch (error) {
+        } catch (error) {
         procesaErrores(error, res);
+        }
     }
-};
 
-export const register = async (req, res) => {
-    const { first_name, last_name, email, password, age, role } = req.body;
+    static async register(req, res) {
+        try {
+            const saltRounds = 10;
+            req.body.password = bcrypt.hashSync(req.body.password, saltRounds);
+            
+            let userRegistered = await usuariosMongoDAO.createUser(req.body);
+            const newCart = await Cart.addCart();
+            userRegistered.cart = newCart._id;
 
-    try {
-        if (!first_name || !last_name || !email || !password || !age) {
-            return res.status(400).json({ message: 'Todos los campos son requeridos' });
+            
+            let token = jwt.sign(
+                { id: userRegistered._id, role: userRegistered.role },
+                config.SECRET,
+                { expiresIn: config.EXPIRACION }
+            );
+            res.cookie('jwt', token, { httpOnly: true, maxAge: 3600000, secure: false });
+            return res.json({
+                message: 'Registro exitoso',
+                user: new userDTO(userRegistered)
+            });
+        } catch (err) {
+            procesaErrores(err, res);
         }
+    }
 
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({ message: 'El usuario con ese correo ya existe' });
-        }
+    static async logout(req, res) {
+        try {
+            let token = req.cookies.jwt;  
+            if (token) {
+                res.clearCookie('jwt');
 
-        const hashedPassword = bcrypt.hashSync(password, 10);
 
-        const newUser = new User({
-            first_name,
-            last_name,
-            email,
-            password: hashedPassword,
-            age,
-            role: role || 'user' 
-        });
+                if (req.user && req.user.cart) { 
+                    await Cart.deleteCart(req.user.cart); 
+                    req.user.cart = null;  
+                    await req.user.save();  
+                }
 
-        await newUser.save();
-
-        res.status(201).json({
-            message: 'Usuario creado exitosamente',
-            user: {
-                first_name: newUser.first_name,
-                last_name: newUser.last_name,
-                email: newUser.email,
-                role: newUser.role
+                return res.json({ message: 'Logout exitoso' }); 
+            } else {
+                return res.status(400).json({ message: 'No se encontró token de sesión' });
             }
-        });
-    } catch (err) {
-        procesaErrores(err, res);
+        } catch (error) {
+            procesaErrores(error, res);
+        }
     }
-};
-
-export const logout = (req, res) => {    
-    res.clearCookie('cookietoken'); 
-    res.json({ message: 'Logout exitoso' });
-};
+}

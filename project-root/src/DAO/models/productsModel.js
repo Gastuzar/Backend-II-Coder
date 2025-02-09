@@ -1,7 +1,6 @@
-
 import mongoose from 'mongoose';
 
-export default mongoose.model(
+export const productoModelo=mongoose.model(
     'Product',
     new mongoose.Schema(
         {

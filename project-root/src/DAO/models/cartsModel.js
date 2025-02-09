@@ -1,7 +1,7 @@
 
 import mongoose from 'mongoose';
 
-export default mongoose.model(
+export const cartsModel=mongoose.model(
     'Cart',
     new mongoose.Schema(
         {
