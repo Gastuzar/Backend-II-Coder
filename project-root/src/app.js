@@ -38,5 +38,3 @@ app.listen(PORT, () => {
 });
 
 conectarDB(config.MONGO_URL, config.DB_NAME)
-
-//{ "email": "gastonz1@admin.com", "password": "123456" }
