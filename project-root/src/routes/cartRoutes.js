@@ -25,3 +25,15 @@ router.delete('/:cid', passport.authenticate('jwt', { session: false }), auth(['
 router.post('/:cid/purchase', passport.authenticate('jwt', { session: false }), auth(['user', 'admin']), CartsController.finalizarCompra);
 
 export default router;
+
+// {
+//     "message": "Perfil usuario",
+//     "user": {
+//         "id": "67a7ea10575cab6885ed1214",
+//         "first_name": "Perfil",
+//         "last_name": "Prueba",
+//         "email": "gastonz1@admin.com",
+//         "role": "admin",
+//         "cart": "67a81c7971e7e91114e450a3"
+//     }
+// }

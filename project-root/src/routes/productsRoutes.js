@@ -18,3 +18,4 @@ router.delete('/:id', passport.authenticate('jwt', { session: false }), auth(['a
 
 
 export default router;
+

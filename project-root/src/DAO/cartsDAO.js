@@ -6,8 +6,9 @@ export class CartsDAO {
     }
     
     static async getCartById(cartId) {
-        return await Cart.findById(cartId);
-    }
+    return await Cart.findById(cartId).populate('products.product');
+}
+
     
     static async addCart() {
         return await Cart.create({});

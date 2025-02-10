@@ -2,7 +2,7 @@ import { CartsDAO as Cart } from '../DAO/cartsDAO.js';
 import Ticket from '../DAO/models/ticketModel.js';
 import { procesaErrores } from '../utils.js';
 import { ProductosDAO } from '../DAO/productsDAO.js';
-
+import { isValidObjectId } from "mongoose";
 export class CartsController {
     static async addProductToCart(req, res) {
         try {
@@ -43,7 +43,7 @@ export class CartsController {
         } catch (error) {
             procesaErrores(error, res);
         }
-    }//Listo
+    }
     static async getMyCart(req, res) {
         try {
             let cart = await Cart.getCartById(req.user.cart);
@@ -55,7 +55,7 @@ export class CartsController {
         } catch (error) {
             procesaErrores(error, res);
         }
-    }//Listo
+    }
     static async getCarts(req, res) {
         try {
             let carts = await Cart.getCart();
@@ -64,7 +64,7 @@ export class CartsController {
         } catch (error) {
             procesaErrores(error, res);
         }
-    }//Listo
+    }
     static async getCartById(req, res) {
         try {
             const cartId = req.params.cid;
@@ -78,7 +78,7 @@ export class CartsController {
         } catch (error) {
             procesaErrores(error, res);
         }
-    }//Listo
+    }
     static async createCart(req, res) {
         try {
             if (!req.user) {
@@ -95,7 +95,7 @@ export class CartsController {
         } catch (error) {
             procesaErrores(error, res);
         }
-    }//Listo
+    }
     static async updateMyCart(req, res) {
         try {
             const user = req.user;
@@ -136,7 +136,7 @@ export class CartsController {
         } catch (error) {
             procesaErrores(error, res);
         }
-    }//Listo
+    }
     static async updatedIdCart(req, res) {
         try {
             const cartId = req.params.cid; 
@@ -175,7 +175,7 @@ export class CartsController {
         } catch (error) {
             procesaErrores(error, res);
         }
-    }//Listo
+    }
     
     static async removeProductFromCart(req, res) {
         try {
@@ -187,48 +187,80 @@ export class CartsController {
         } catch (error) {
             procesaErrores(error, res);
         }
-    }//Listo          
+    }       
     static async finalizarCompra(req, res) {
         try {
             const { cid } = req.params;
-
+    
             if (!isValidObjectId(cid)) {
-                return res.status(400).json({ message: 'ID de carrito inválido' });
+                return res.status(400).json({ error: "Ingrese un ID de carrito válido" });
             }
-
-            const cart = await Cart.getCartById(cid).populate('products.product');
+    
+            if (!req.user.cart || req.user.cart.toString() !== cid.toString()) {
+                return res.status(400).json({ error: "El carrito no pertenece al usuario autenticado" });
+            }
+    
+            const cart = await Cart.getCartById(cid);
             if (!cart) {
-                return res.status(404).json({ message: 'Carrito no encontrado' });
+                return res.status(404).json({ message: "Carrito no encontrado" });
             }
-
+    
+            if (!cart.products || cart.products.length === 0) {
+                return res.status(400).json({ error: "El carrito está vacío" });
+            }
+    
             let total = 0;
             const productosNoProcesados = [];
-
+            const productosComprados = [];
+    
             for (const item of cart.products) {
-                if (item.product.stock >= item.quantity) {
-                    item.product.stock -= item.quantity;
-                    await item.product.save();
-                    total += item.product.price * item.quantity;
+                const productDB = item.product;
+    
+                if (productDB.stock >= item.quantity) {
+                    await ProductosDAO.updateProduct(productDB._id, { $inc: { stock: -item.quantity } });
+    
+                    total += productDB.price * item.quantity;
+    
+                    productosComprados.push({
+                        _id: productDB._id,
+                        title: productDB.title,
+                        price: productDB.price,
+                        cantidad: item.quantity,
+                        subtotal: productDB.price * item.quantity
+                    });
                 } else {
-                    productosNoProcesados.push(item.product._id);
+                    productosNoProcesados.push(productDB._id);
                 }
             }
-
+    
             cart.products = cart.products.filter(item => !productosNoProcesados.includes(item.product._id));
+    
+            if (!cart.products) {
+                return res.status(500).json({ error: "Error al actualizar el carrito" });
+            }
+    
             await cart.save();
-
+    
+            if (productosComprados.length === 0) {
+                return res.status(400).json({ error: "No existen ítems en condiciones de ser adquiridos" });
+            }
+    
             const ticket = await Ticket.create({
+                code: `TICKET-${Date.now()}`,
+                purchase_datetime: new Date(),
+                detalle: productosComprados,
                 amount: total,
-                purchaser: req.user.email
+                comprador: req.user.email
             });
-
+    
             res.status(200).json({
-                message: 'Compra realizada',
+                message: "Compra realizada",
                 ticket,
                 productosNoProcesados
             });
+    
         } catch (error) {
             procesaErrores(error, res);
         }
     }
-}
+}                
