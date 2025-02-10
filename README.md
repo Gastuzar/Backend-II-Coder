@@ -73,7 +73,11 @@ CARRITO
 
 Método HTTP: GET
 URL: http://localhost:3000/api/carts
-(devuelve carrito)
+(devuelve carrito del usuario)
+
+Método HTTP: GET
+URL: http://localhost:3000/api/carts/all
+(devuelve todos los carrito)
 
 Método HTTP: GET
 URL: http://localhost:3000/api/carts/:cid
@@ -95,6 +99,10 @@ Body:
 
 Método HTTP: PUT
 URL: http://localhost:3000/api/carts/:cid
+(modifica un producto del carrito del usuario logueado)
+
+Método HTTP: PUT
+URL: http://localhost:3000/api/carts/:cid
 Body:
 {
     "products": [
@@ -108,7 +116,7 @@ Body:
         }
     ]
 }
-(modifica un producto del carrito)
+(modifica un producto del carrito por id)
 
 Método HTTP: DELETE
 URL: http://localhost:3000/api/carts/:cid/remove-product/:productId
